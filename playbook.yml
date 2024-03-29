@@ -2,3 +2,9 @@
 - name: Playbook
   hosts: all
   tasks:
+# Using ansible.builtin.get_url is possible, but no way of limiting to a single file which adds complexity of cleaning after itself
+    - name: Copy nice-script.sh from git remote repository
+      ansible.builtin.get_url:
+        url: http://example.com/path/file.conf
+        dest: /etc/foo.conf
+        mode: '0440'
