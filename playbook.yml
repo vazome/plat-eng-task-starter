@@ -1,10 +1,59 @@
 ---
 - name: Playbook
   hosts: all
+  vars:
+    username: john
+    homepath: betterplace
+    id: 1234
+    packages:
+      - tmux
+      - vim
+  gather_facts: true
   tasks:
-# Using ansible.builtin.get_url is possible, but no way of limiting to a single file which adds complexity of cleaning after itself
+# Using ansible.builtin.get_url is possible, but no way of limiting to a single file which adds complexity of cleaning after itself.
     - name: Copy nice-script.sh from git remote repository
       ansible.builtin.get_url:
-        url: http://example.com/path/file.conf
-        dest: /etc/foo.conf
-        mode: '0440'
+        url: https://raw.githubusercontent.com/vazome/plat-eng-task-starter/main/scripts/nice-script.sh
+        dest: /etc/skel/nice-script.sh
+        mode: '0555'
+    - name: Create User
+      ansible.builtin.user:
+        name: "{{ username }}"
+        state: present
+        shell: /bin/bash
+        createhome: true
+        home: /{{ homepath }}/{{ username }}
+        uid: "{{ id }}"
+# ansible.builtin.lineinfile is an option too, not native though.
+    - name: Allow whoami for {{ username }}
+      community.general.sudoers:
+        name: allow-whoami
+        state: present
+        user: "{{ username }}"
+        commands: /usr/bin/whoami
+# ansible.builtin.package could have been used too, but we explicitly use apt since we know the OS family.
+    - name: Install {{ packages }}
+      when: ansible_facts['os_family'] == "Debian"
+      ansible.builtin.apt:
+        name: "{{ packages }}"
+        state: present
+# Separate Terraform installation into a block, this uses old-single-line format, not "new" DEB822
+    - name: Install Terraform CLI
+      when: ansible_facts['os_family'] == "Debian"
+      block:
+        - name: Add Example GPG key
+          ansible.builtin.get_url:
+            url: https://apt.releases.hashicorp.com/gpg
+            dest: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+            mode: '0644'
+            force: true
+        - name: Add HashiCorp repository
+          ansible.builtin.apt_repository:
+            filename: hashicorp
+            repo: "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        - name: Install Terraform
+          ansible.builtin.apt:
+            name: terraform
+            update_cache: true
+            state: present
+  become: true
