@@ -25,7 +25,7 @@
         createhome: true
         home: /{{ homepath }}/{{ username }}
         uid: "{{ id }}"
-# ansible.builtin.lineinfile is an option too, not native though.
+# ansible.builtin.lineinfile is an option too, but not native though.
     - name: Allow whoami for {{ username }}
       community.general.sudoers:
         name: allow-whoami
