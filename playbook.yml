@@ -33,7 +33,7 @@
         user: "{{ username }}"
         commands: /usr/bin/whoami
 # Separating app installation, for terraform we use deb822 source format, https://discourse.ubuntu.com/t/spec-apt-deb822-sources-by-default/29333
-## We can also do it via ansible.builtin.shell, but nothing stops us going modern with deb822_repository.
+## We can also do it via ansible.builtin.shell, but nothing stops forward thinking with deb822_repository.
     - name: Install Terraform CLI
       when: ansible_facts['os_family'] == "Debian"
       block:
