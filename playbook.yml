@@ -31,29 +31,33 @@
         state: present
         user: "{{ username }}"
         commands: /usr/bin/whoami
-# ansible.builtin.package could have been used too, but we explicitly use apt since we know the OS family.
-    - name: Install {{ packages }}
-      when: ansible_facts['os_family'] == "Debian"
-      ansible.builtin.apt:
-        name: "{{ packages }}"
-        state: present
-# Separate Terraform installation into a block, this uses old-single-line format, not "new" DEB822
+# Separating app installation, for terraform we use deb822 source format, https://discourse.ubuntu.com/t/spec-apt-deb822-sources-by-default/29333
+## We can also do it via ansible.builtin.shell, but nothing stops us going modern with deb822_repository.
     - name: Install Terraform CLI
       when: ansible_facts['os_family'] == "Debian"
       block:
-        - name: Add Example GPG key
-          ansible.builtin.get_url:
-            url: https://apt.releases.hashicorp.com/gpg
-            dest: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
-            mode: '0644'
-            force: true
-        - name: Add HashiCorp repository
-          ansible.builtin.apt_repository:
-            filename: hashicorp
-            repo: "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        - name: Installing python3-debian as a requirement for deb822 support
+          ansible.builtin.apt:
+            name: python3-debian
+            update_cache: true
+            state: present
+        - name: Add HashiCorp repository according to deb822 standard
+          ansible.builtin.deb822_repository:
+            name: hashicorp
+            types: deb
+            uris: https://apt.releases.hashicorp.com
+            suites: "{{ ansible_distribution_release }}"
+            components: main
+            signed_by: https://apt.releases.hashicorp.com/gpg
+            state: present
         - name: Install Terraform
           ansible.builtin.apt:
             name: terraform
             update_cache: true
+            state: present
+# ansible.builtin.package could have been used too, but we explicitly use apt since we know the OS family.
+        - name: Install {{ packages }}
+          ansible.builtin.apt:
+            name: "{{ packages }}"
             state: present
   become: true
